@@ -31,9 +31,21 @@ content_weight = 0.025
 
 # Dimensions of images.
 width, height = load_img(content_image_path).size
-img_nrows = 400
-img_ncols = int(width * img_nrows / height)
+num_rows = 400
+num_cols = int(width * img_nrows / height)
 
 # Tensor representations of input images
-content_image = K.variable(proc.preprocess_image(content_image_path, img_nrows, img_ncols))
-style_image = K.variable(proc.preprocess_image(style_image_path, img_nrows, img_ncols))
+content_image = K.variable(proc.preprocess_image(content_image_path, num_rows, num_cols))
+style_image = K.variable(proc.preprocess_image(style_image_path, num_rows, num_cols))
+
+# Placeholder for utput image
+if K.image_data_format() == 'channels_first':
+    generated_image = K.placeholder((1, 3, img_nrows, img_ncols))
+else:
+    generated_image = K.placeholder((1, img_nrows, img_ncols, 3))
+
+#VGG model for the network that uses Imagenet weights
+model = vgg19.VGG19(input_tensor= K.concatenate([content_image, style_image, generated_image], axis=0), 
+                    weights='imagenet', 
+                    include_top=False)
+
