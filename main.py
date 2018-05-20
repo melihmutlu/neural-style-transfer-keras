@@ -2,12 +2,15 @@ from __future__ import print_function
 import os
 # Using Theano as backend. Comment this line if you want to user Tensorflow instead
 os.environ["KERAS_BACKEND"] = "theano"
-from keras.preprocessing.image import load_img, array_to_img, img_to_array
 import numpy as np
 import argparse
+from scipy.optimize import fmin_l_bfgs_b
 from keras.applications import vgg19
 from keras import backend as K
+from keras.preprocessing.image import load_img
 import utils as utils
+import processor as proc
+import evaluator as _eval
 
 parser = argparse.ArgumentParser(description='CMPE 462 Term Project - Neural Style transfer')
 parser.add_argument('content_image_path', metavar='base', type=str,
@@ -56,7 +59,7 @@ loss = K.variable(0.)
 layer_features = outputs_dict['block5_conv2']
 content_image_features = layer_features[0, :, :, :]
 generated_features = layer_features[2, :, :, :]
-loss += content_weight * util.content_loss(content_image_features,
+loss += content_weight * utils.content_loss(content_image_features,
                                       generated_features)
 
 feature_layers = ['block1_conv1', 'block2_conv1',
@@ -67,9 +70,9 @@ for layer_name in feature_layers:
     layer_features = outputs_dict[layer_name]
     style_features = layer_features[1, :, :, :]
     generated_features = layer_features[2, :, :, :]
-    sl = util.style_loss(style_features, generated_features, num_rows, num_cols)
+    sl = utils.style_loss(style_features, generated_features, num_rows, num_cols)
     loss += (style_weight / len(feature_layers)) * sl
-loss += total_weight * utils.total_variation_loss(generated_image, num_rows, num_cols)
+loss += total_weight * utils.total_loss(generated_image, num_rows, num_cols)
 
 # Gradients of the generated image wrt the loss
 grads = K.gradients(loss, generated_image)
@@ -79,5 +82,18 @@ if isinstance(grads, (list, tuple)):
     outputs += grads
 else:
     outputs.append(grads)
-
 f_outputs = K.function([generated_image], outputs)
+
+x = proc.preprocess_image(content_image_path, num_rows, num_cols)
+
+evaluator = _eval.Evaluator(f_outputs, num_rows, num_cols)
+
+for i in range(iterations):
+    print('Iteration', i)
+    x, min_val, info = fmin_l_bfgs_b(evaluator.loss, x.flatten(), fprime=evaluator.grads, maxfun=20)
+    print('Current loss value:', min_val)
+    # save current generated image
+    img = proc.deprocess_image(x.copy(),num_rows, num_cols)
+    fname = result_file + '_at_iteration_%d.png' % i
+    utils.save_img(fname, img)
+    print('Image saved as', fname)

@@ -1,6 +1,7 @@
 from keras.preprocessing.image import load_img, array_to_img, img_to_array
 import numpy as np
 from keras.applications import vgg19
+from keras import backend as K
 
 def deprocess_image(x, num_rows, num_cols):
     if K.image_data_format() == 'channels_first':
