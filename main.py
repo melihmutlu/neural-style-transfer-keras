@@ -1,7 +1,4 @@
 from __future__ import print_function
-import os
-# Using Theano as backend. Comment this line if you want to user Tensorflow instead
-os.environ["KERAS_BACKEND"] = "theano"
 import numpy as np
 import argparse
 from scipy.optimize import fmin_l_bfgs_b
